@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weekly / Monthly To‑Do with Notes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --bg-soft: #151821;
+      --bg-softer: #1f2230;
+      --accent: #4fd1c5;
+      --accent-soft: rgba(79, 209, 197, 0.15);
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f87171;
+      --border: #272a36;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.7);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 50%, #000 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      padding: 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1120px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+      gap: 20px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(3, 7, 18, 0.9));
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 16px; }
+      .app { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      padding: 20px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel + .panel { border-left: 1px solid rgba(31, 41, 55, 0.9); }
+
+    @media (max-width: 900px) {
+      .panel + .panel {
+        border-left: none;
+        border-top: 1px solid rgba(31, 41, 55, 0.9);
+      }
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .title-group { display: flex; flex-direction: column; gap: 4px; }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-badge {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(45, 212, 191, 0.45);
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .controls { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn span { font-size: 14px; }
+
+    .btn-accent {
+      border-color: rgba(45, 212, 191, 0.8);
+      background: linear-gradient(135deg, #22c1c3, #2f80ed);
+    }
+
+    .btn-accent:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(45, 212, 191, 0.3);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(15, 23, 42, 0.9);
+      color: #f97373;
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+
+    .btn-small { padding: 4px 9px; font-size: 11px; }
+
+    /* Monthly (left) */
+
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+
+    .month-label {
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .month-name {
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .month-date {
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .week-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .calendar {
+      background: radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 55%),
+        var(--bg-soft);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.8);
+    }
+
+    .weekday-row,
+    .date-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .weekday {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      text-align: center;
+      padding-bottom: 2px;
+    }
+
+    .date-cell {
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      overflow: hidden;
+    }
+
+    .date-cell.empty {
+      cursor: default;
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .date-cell:hover:not(.empty) {
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .date-number { position: relative; z-index: 2; }
+
+    .date-badge {
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .date-cell.has-tasks .date-badge {
+      opacity: 1;
+      background: linear-gradient(
+        135deg,
+        rgba(45, 212, 191, 0.24),
+        rgba(59, 130, 246, 0.22)
+      );
+    }
+
+    .date-cell.today {
+      border-color: rgba(250, 250, 250, 0.15);
+      box-shadow: inset 0 0 0 1px rgba(248, 250, 252, 0.15);
+    }
+
+    .date-cell.selected {
+      border-color: rgba(45, 212, 191, 0.9);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.7),
+        0 0 20px rgba(34, 211, 238, 0.35);
+      color: #ecfeff;
+    }
+
+    .date-cell.selected .date-badge {
+      opacity: 1;
+      background: radial-gradient(
+          circle at top left,
+          rgba(94, 234, 212, 0.35),
+          transparent 60%
+        ),
+        radial-gradient(
+          circle at bottom right,
+          rgba(59, 130, 246, 0.4),
+          transparent 60%
+        );
+    }
+
+    .month-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.25);
+    }
+
+    .month-nav { display: flex; align-items: center; gap: 6px; }
+
+    .nav-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-btn:hover {
+      border-color: rgba(56, 189, 248, 0.7);
+      color: #e0f2fe;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+    }
+
+    .nav-btn:active { transform: translateY(1px); }
+
+    /* Weekly (right) */
+
+    .week-range {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chip {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      font-size: 11px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      margin-bottom: 10px;
+    }
+
+    .bar-track {
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      overflow: hidden;
+      width: 130px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e, #4ade80, #a3e635);
+      width: 0%;
+      transition: width 0.18s ease-out;
+    }
+
+    .todo-container {
+      margin-top: 4px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 55%),
+        var(--bg-soft);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      padding: 10px 10px 8px;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.85);
+      min-height: 220px;
+    }
+
+    .todo-input-row { display: flex; gap: 8px; align-items: center; }
+
+    .todo-input {
+      flex: 1;
+      font-size: 13px;
+      padding: 7px 9px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text);
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .todo-input::placeholder { color: #6b7280; }
+
+    .todo-input:focus {
+      border-color: rgba(59, 130, 246, 0.9);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.8);
+    }
+
+    .todo-list {
+      list-style: none;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 4px;
+      overflow-y: auto;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 7px;
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      font-size: 13px;
+      transition: background 0.12s ease, transform 0.05s ease;
+    }
+
+    .todo-item:hover {
+      background: rgba(15, 23, 42, 1);
+      transform: translateY(-0.5px);
+    }
+
+    .todo-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .todo-top-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .todo-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .note-indicator {
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.09);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      color: #facc15;
+      font-size: 10px;
+    }
+
+    .todo-checkbox {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      border-radius: 4px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background: radial-gradient(circle at top, #020617, #020617);
+      appearance: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .todo-checkbox:checked {
+      border-color: rgba(34, 197, 94, 0.9);
+      background: radial-gradient(circle at 30% 0, #4ade80, #22c55e);
+    }
+
+    .todo-checkbox::after {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      background: transparent;
+      transform: scale(0.3);
+      transition: all 0.13s ease;
+    }
+
+    .todo-checkbox:checked::after {
+      background: #022c22;
+      box-shadow: 0 0 0 1px rgba(240, 253, 250, 0.25);
+      transform: scale(0.95);
+    }
+
+    .todo-text {
+      flex: 1;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    .todo-text.done {
+      text-decoration: line-through;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .todo-day-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .todo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-left: 4px;
+    }
+
+    .icon-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px;
+      font-size: 13px;
+      border-radius: 999px;
+      transition: all 0.12s ease;
+    }
+
+    .icon-btn:hover {
+      color: #e5e7eb;
+      background: rgba(31, 41, 55, 0.9);
+    }
+
+    .icon-btn.delete:hover {
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.9);
+    }
+
+    .empty-state {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 12px 6px 6px;
+      text-align: center;
+    }
+
+    /* Note modal */
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 360px;
+      background: radial-gradient(circle at top, rgba(30, 64, 175, 0.6), transparent 60%),
+        #020617;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.8);
+      padding: 14px 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .modal-title {
+      font-weight: 500;
+    }
+
+    .modal-close-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .modal-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .modal-textarea {
+      margin-top: 4px;
+      width: 100%;
+      min-height: 90px;
+      max-height: 160px;
+      font-size: 13px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      background: rgba(15, 23, 42, 0.98);
+      color: var(--text);
+      resize: vertical;
+      outline: none;
+    }
+
+    .modal-textarea:focus {
+      border-color: rgba(59, 130, 246, 0.9);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.8);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .modal-footer .btn-small { font-size: 11px; padding-inline: 10px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(55, 65, 81, 0.8);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Left: Monthly -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="title-group">
+          <div class="title">
+            월간 캘린더
+            <span class="title-badge">MONTHLY VIEW</span>
+          </div>
+          <div class="subtitle">날짜를 클릭하면 해당 주의 할 일을 오른쪽에서 관리할 수 있어요.</div>
+        </div>
+        <div class="controls">
+          <button class="btn btn-small btn-ghost" id="todayBtn">
+            <span>●</span> 오늘
+          </button>
+        </div>
+      </div>
+
+      <div class="month-header">
+        <div class="month-label">
+          <span class="month-name" id="monthName">MONTH</span>
+          <span class="month-date" id="monthDate">2025‑01</span>
+        </div>
+        <div class="month-nav">
+          <button class="nav-btn" id="prevMonthBtn">‹</button>
+          <button class="nav-btn" id="nextMonthBtn">›</button>
+        </div>
+      </div>
+
+      <div class="week-label" id="selectedWeekLabel">이번 주</div>
+
+      <div class="calendar" id="calendar"></div>
+
+      <div class="month-stats">
+        <div class="pill">
+          <span class="pill-dot"></span>
+          <span id="monthStatsText">이 달의 총 할 일 0개</span>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span style="font-size:11px;">저장됨 · 브라우저에 보관</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Weekly To‑Do -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="title-group">
+          <div class="title">
+            주간 To‑Do
+            <span class="title-badge">WEEKLY LIST</span>
+          </div>
+          <div class="subtitle">
+            선택한 주에 메모가 포함된 할 일을 작성하고 체크하세요. 미완료 항목은 다음 주로 자동 이월됩니다.
+          </div>
+        </div>
+        <div class="controls">
+          <button class="btn btn-small btn-ghost" id="clearWeekBtn">
+            <span>⟲</span> 이번 주 비우기
+          </button>
+          <button class="btn btn-small btn-ghost" id="clearAllBtn">
+            <span>⚠</span> 전체 초기화
+          </button>
+        </div>
+      </div>
+
+      <div class="week-range">
+        <span id="weekRangeText">YYYY.MM.DD ~ YYYY.MM.DD</span>
+        <span class="chip" id="weekTag">THIS WEEK</span>
+      </div>
+
+      <div class="summary">
+        <span id="summaryText">이번 주 할 일 0개 · 완료 0개</span>
+        <div class="bar-track">
+          <div class="bar-fill" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div class="todo-container">
+        <div class="todo-input-row">
+          <input
+            type="text"
+            id="todoInput"
+            class="todo-input"
+            placeholder="할 일을 입력하고 Enter 또는 + 버튼을 눌러 추가하세요."
+          />
+          <button class="btn btn-small btn-accent" id="addTodoBtn">
+            <span>＋</span> 추가
+          </button>
+        </div>
+
+        <ul class="todo-list" id="todoList"></ul>
+        <div class="empty-state" id="emptyState">
+          아직 할 일이 없습니다. 위 입력창에 적고 추가해 보세요.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Note Modal (동적으로 보여줌) -->
+  <div id="noteModalRoot" style="display:none;"></div>
+
+<div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(31,41,55,0.5);">
+  <button class="btn btn-accent" id="exportJsonBtn" style="width:100%; justify-content:center;">
+    📤 공유용 JSON 내보내기
+  </button>
+</div>
+  <script>
+    const STORAGE_KEY = "weekly_monthly_todos_v2_with_notes";
+
+    let state = {
+      weeks: {},           // weekId -> { items: [{id,text,done,dayIndex,notes}] }
+      selectedDate: null,  // YYYY-MM-DD
+      selectedWeekId: null,
+      lastCarryWeekId: null // 마지막으로 이월 처리한 기준 주
+    };
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function parseDate(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function getWeekIdFromDate(date) {
+      const day = date.getDay();
+      const diff = (day + 6) % 7;
+      const monday = new Date(date);
+      monday.setDate(date.getDate() - diff);
+      return formatDate(monday);
+    }
+
+    function getWeekRangeFromWeekId(weekId) {
+      const monday = parseDate(weekId);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const mMonth = monday.getMonth() + 1;
+      const sMonth = sunday.getMonth() + 1;
+      const mDay = monday.getDate();
+      const sDay = sunday.getDate();
+      const year = monday.getFullYear();
+      const startStr = `${year}.${String(mMonth).padStart(2, "0")}.${String(
+        mDay
+      ).padStart(2, "0")}`;
+      const endStr = `${year}.${String(sMonth).padStart(2, "0")}.${String(
+        sDay
+      ).padStart(2, "0")}`;
+      return `${startStr} ~ ${endStr}`;
+    }
+
+    function dayIndexFromDate(date) {
+      const jsDay = date.getDay();
+      return (jsDay + 6) % 7;
+    }
+
+    function dayLabelFromIndex(idx) {
+      const days = ["월", "화", "수", "목", "금", "토", "일"];
+      return days[idx] || "?";
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          state.weeks = parsed.weeks || {};
+          state.selectedDate = parsed.selectedDate || null;
+          state.selectedWeekId = parsed.selectedWeekId || null;
+          state.lastCarryWeekId = parsed.lastCarryWeekId || null;
+
+          // notes 필드가 없는 이전 버전 데이터 호환
+          Object.values(state.weeks).forEach((w) => {
+            (w.items || []).forEach((item) => {
+              if (typeof item.notes === "undefined") item.notes = "";
+            });
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to load state", e);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            weeks: state.weeks,
+            selectedDate: state.selectedDate,
+            selectedWeekId: state.selectedWeekId,
+            lastCarryWeekId: state.lastCarryWeekId
+          })
+        );
+      } catch (e) {
+        console.warn("Failed to save state", e);
+      }
+    }
+
+    const calendarEl = document.getElementById("calendar");
+    const monthNameEl = document.getElementById("monthName");
+    const monthDateEl = document.getElementById("monthDate");
+    const selectedWeekLabelEl = document.getElementById("selectedWeekLabel");
+    const monthStatsTextEl = document.getElementById("monthStatsText");
+
+    let currentMonthDate = new Date();
+
+    function ensureWeekData(weekId) {
+      if (!state.weeks[weekId]) {
+        state.weeks[weekId] = {
+          id: weekId,
+          items: []
+        };
+      }
+      return state.weeks[weekId];
+    }
+
+    function renderCalendar() {
+      calendarEl.innerHTML = "";
+      const year = currentMonthDate.getFullYear();
+      const month = currentMonthDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const firstDayIndex = (firstDay.getDay() + 6) % 7;
+      const daysInMonth = lastDay.getDate();
+
+      const monthNames = [
+        "JAN","FEB","MAR","APR","MAY","JUN",
+        "JUL","AUG","SEP","OCT","NOV","DEC"
+      ];
+      monthNameEl.textContent = monthNames[month];
+      monthDateEl.textContent = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+      const weekdayRow = document.createElement("div");
+      weekdayRow.className = "weekday-row";
+      ["월","화","수","목","금","토","일"].forEach((w) => {
+        const wd = document.createElement("div");
+        wd.className = "weekday";
+        wd.textContent = w;
+        weekdayRow.appendChild(wd);
+      });
+      calendarEl.appendChild(weekdayRow);
+
+      const dateGrid = document.createElement("div");
+      dateGrid.className = "date-grid";
+
+      const todayStr = formatDate(new Date());
+      let totalMonthTasks = 0;
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        const empty = document.createElement("div");
+        empty.className = "date-cell empty";
+        dateGrid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cellDate = new Date(year, month, day);
+        const dateStr = formatDate(cellDate);
+        const weekId = getWeekIdFromDate(cellDate);
+        const weekData = state.weeks[weekId];
+        const tasksCount = weekData ? weekData.items.length : 0;
+        totalMonthTasks += tasksCount;
+
+        const cell = document.createElement("div");
+        cell.className = "date-cell";
+        cell.dataset.date = dateStr;
+
+        const badge = document.createElement("div");
+        badge.className = "date-badge";
+
+        const num = document.createElement("div");
+        num.className = "date-number";
+        num.textContent = day;
+
+        if (dateStr === todayStr) cell.classList.add("today");
+        if (tasksCount > 0) cell.classList.add("has-tasks");
+        if (state.selectedDate === dateStr) cell.classList.add("selected");
+
+        cell.appendChild(badge);
+        cell.appendChild(num);
+
+        cell.addEventListener("click", () => {
+          state.selectedDate = dateStr;
+          state.selectedWeekId = weekId;
+          renderCalendar();
+          renderWeek();
+        });
+
+        dateGrid.appendChild(cell);
+      }
+
+      calendarEl.appendChild(dateGrid);
+      monthStatsTextEl.textContent = `이 달의 총 할 일 ${totalMonthTasks}개`;
+
+      if (state.selectedWeekId) {
+        selectedWeekLabelEl.textContent =
+          `선택한 주: ${getWeekRangeFromWeekId(state.selectedWeekId)}`;
+      } else {
+        const thisWeekId = getWeekIdFromDate(new Date());
+        selectedWeekLabelEl.textContent =
+          `이번 주: ${getWeekRangeFromWeekId(thisWeekId)}`;
+      }
+    }
+
+    const weekRangeTextEl = document.getElementById("weekRangeText");
+    const weekTagEl = document.getElementById("weekTag");
+    const summaryTextEl = document.getElementById("summaryText");
+    const progressBarEl = document.getElementById("progressBar");
+    const todoInputEl = document.getElementById("todoInput");
+    const addTodoBtnEl = document.getElementById("addTodoBtn");
+    const todoListEl = document.getElementById("todoList");
+    const emptyStateEl = document.getElementById("emptyState");
+    const noteModalRoot = document.getElementById("noteModalRoot");
+
+    function renderWeek() {
+      let weekId = state.selectedWeekId || getWeekIdFromDate(new Date());
+      state.selectedWeekId = weekId;
+
+      const weekRange = getWeekRangeFromWeekId(weekId);
+      weekRangeTextEl.textContent = weekRange;
+
+      const thisWeekId = getWeekIdFromDate(new Date());
+      weekTagEl.textContent = weekId === thisWeekId ? "THIS WEEK" : "SELECTED WEEK";
+
+      const weekData = ensureWeekData(weekId);
+      const items = weekData.items;
+
+      todoListEl.innerHTML = "";
+      emptyStateEl.style.display = items.length ? "none" : "block";
+
+      let doneCount = 0;
+      items.forEach((item) => {
+        if (item.done) doneCount++;
+
+        const li = document.createElement("li");
+        li.className = "todo-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "todo-checkbox";
+        checkbox.checked = !!item.done;
+
+        const main = document.createElement("div");
+        main.className = "todo-main";
+
+        const topRow = document.createElement("div");
+        topRow.className = "todo-top-row";
+
+        const textSpan = document.createElement("span");
+        textSpan.className = "todo-text" + (item.done ? " done" : "");
+        textSpan.textContent = item.text;
+
+        const dayTag = document.createElement("span");
+        dayTag.className = "todo-day-tag";
+        dayTag.textContent = dayLabelFromIndex(item.dayIndex);
+
+        topRow.appendChild(textSpan);
+        topRow.appendChild(dayTag);
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "todo-meta-row";
+        if (item.notes && item.notes.trim() !== "") {
+          const noteIndicator = document.createElement("span");
+          noteIndicator.className = "note-indicator";
+          noteIndicator.textContent = "메모 있음";
+          metaRow.appendChild(noteIndicator);
+        }
+
+        main.appendChild(topRow);
+        if (metaRow.children.length > 0) main.appendChild(metaRow);
+
+        const actions = document.createElement("div");
+        actions.className = "todo-actions";
+
+        const noteBtn = document.createElement("button");
+        noteBtn.className = "icon-btn";
+        noteBtn.title = "메모 추가/수정";
+        noteBtn.textContent = "✎";
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "icon-btn delete";
+        delBtn.title = "삭제";
+        delBtn.textContent = "✕";
+
+        checkbox.addEventListener("change", () => {
+          item.done = checkbox.checked;
+          if (item.done) textSpan.classList.add("done");
+          else textSpan.classList.remove("done");
+          saveState();
+          renderWeek();
+          renderCalendar();
+        });
+
+        delBtn.addEventListener("click", () => {
+          weekData.items = weekData.items.filter((x) => x.id !== item.id);
+          saveState();
+          renderWeek();
+          renderCalendar();
+        });
+
+        noteBtn.addEventListener("click", () => {
+          openNoteModal(weekId, item);
+        });
+
+        actions.appendChild(noteBtn);
+        actions.appendChild(delBtn);
+
+        li.appendChild(checkbox);
+        li.appendChild(main);
+        li.appendChild(actions);
+
+        todoListEl.appendChild(li);
+      });
+
+      const total = items.length;
+      summaryTextEl.textContent = `이번 주 할 일 ${total}개 · 완료 ${doneCount}개`;
+      const percent = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+      progressBarEl.style.width = `${percent}%`;
+
+      saveState();
+    }
+
+    function addTodo() {
+      const text = todoInputEl.value.trim();
+      if (!text) return;
+
+      const date = state.selectedDate ? parseDate(state.selectedDate) : new Date();
+      const weekId = state.selectedWeekId || getWeekIdFromDate(date);
+      const weekData = ensureWeekData(weekId);
+
+      const item = {
+        id: Date.now().toString(36) + Math.random().toString(16).slice(2),
+        text,
+        done: false,
+        dayIndex: dayIndexFromDate(date),
+        notes: ""
+      };
+
+      weekData.items.push(item);
+
+      todoInputEl.value = "";
+      saveState();
+      renderWeek();
+      renderCalendar();
+    }
+
+    function openNoteModal(weekId, item) {
+      noteModalRoot.innerHTML = "";
+      noteModalRoot.style.display = "block";
+
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+
+      const modal = document.createElement("div");
+      modal.className = "modal";
+
+      const header = document.createElement("div");
+      header.className = "modal-header";
+
+      const title = document.createElement("div");
+      title.className = "modal-title";
+      title.textContent = "메모 작성";
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "modal-close-btn";
+      closeBtn.textContent = "✕";
+
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+
+      const label = document.createElement("div");
+      label.className = "modal-label";
+      label.textContent = `할 일: ${item.text}`;
+
+      const textarea = document.createElement("textarea");
+      textarea.className = "modal-textarea";
+      textarea.placeholder = "이 할 일에 대한 메모를 자유롭게 적어두세요.";
+      textarea.value = item.notes || "";
+
+      const footer = document.createElement("div");
+      footer.className = "modal-footer";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "btn btn-small btn-ghost";
+      cancelBtn.textContent = "취소";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "btn btn-small btn-accent";
+      saveBtn.textContent = "저장";
+
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+
+      modal.appendChild(header);
+      modal.appendChild(label);
+      modal.appendChild(textarea);
+      modal.appendChild(footer);
+
+      backdrop.appendChild(modal);
+      noteModalRoot.appendChild(backdrop);
+
+      function closeModal() {
+        noteModalRoot.style.display = "none";
+        noteModalRoot.innerHTML = "";
+      }
+
+      closeBtn.addEventListener("click", closeModal);
+      cancelBtn.addEventListener("click", closeModal);
+
+      saveBtn.addEventListener("click", () => {
+        item.notes = textarea.value;
+        saveState();
+        renderWeek();
+        closeModal();
+      });
+
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) closeModal();
+      });
+    }
+
+    // 미완료 자동 이월 로직
+    function carryOverIncompleteTasks() {
+      const today = new Date();
+      const thisWeekId = getWeekIdFromDate(today);
+
+      if (state.lastCarryWeekId === thisWeekId) return;
+
+      const weekIds = Object.keys(state.weeks).sort();
+      if (!weekIds.length) {
+        state.lastCarryWeekId = thisWeekId;
+        return;
+      }
+
+      // 과거 주들에서 미완료를 현재 주로 이동
+      const thisWeekData = ensureWeekData(thisWeekId);
+      weekIds.forEach((weekId) => {
+        if (weekId >= thisWeekId) return;
+        const w = state.weeks[weekId];
+        if (!w || !w.items || !w.items.length) return;
+
+        const stillIncomplete = [];
+        w.items.forEach((item) => {
+          if (!item.done) {
+            const newItem = {
+              ...item,
+              id: Date.now().toString(36) + Math.random().toString(16).slice(2)
+            };
+            thisWeekData.items.push(newItem);
+          } else {
+            stillIncomplete.push(item);
+          }
+        });
+        w.items = w.items.filter((it) => it.done);
+      });
+
+      state.lastCarryWeekId = thisWeekId;
+      saveState();
+    }
+
+    document.getElementById("prevMonthBtn").addEventListener("click", () => {
+      currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+      renderCalendar();
+    });
+
+    document.getElementById("nextMonthBtn").addEventListener("click", () => {
+      currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+      renderCalendar();
+    });
+
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      const today = new Date();
+      currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      const todayStr = formatDate(today);
+      state.selectedDate = todayStr;
+      state.selectedWeekId = getWeekIdFromDate(today);
+      renderCalendar();
+      renderWeek();
+    });
+
+    addTodoBtnEl.addEventListener("click", addTodo);
+    todoInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addTodo();
+      }
+    });
+
+    document.getElementById("clearWeekBtn").addEventListener("click", () => {
+      if (!state.selectedWeekId) return;
+      if (!confirm("현재 선택된 주의 할 일을 모두 삭제할까요?")) return;
+      state.weeks[state.selectedWeekId].items = [];
+      saveState();
+      renderWeek();
+      renderCalendar();
+    });
+
+    document.getElementById("clearAllBtn").addEventListener("click", () => {
+      if (!confirm("모든 주의 할 일을 전부 초기화할까요? 되돌릴 수 없습니다.")) return;
+      state.weeks = {};
+      state.lastCarryWeekId = null;
+      saveState();
+      renderWeek();
+      renderCalendar();
+    });
+
+    (function init() {
+      loadState();
+      const today = new Date();
+      currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      const todayStr = formatDate(today);
+      state.selectedDate = state.selectedDate || todayStr;
+      state.selectedWeekId =
+        state.selectedWeekId || getWeekIdFromDate(today);
+
+      // 미완료 자동 이월 수행
+      carryOverIncompleteTasks();
+
+      renderCalendar();
+      renderWeek();
+    })();
+
+   // JSON 내보내기 버튼
+document.getElementById("exportJsonBtn").addEventListener("click", () => {
+  const weekId = state.selectedWeekId || getWeekIdFromDate(new Date());
+  const weekData = ensureWeekData(weekId);
+  
+  const exportData = {
+    weekRange: getWeekRangeFromWeekId(weekId),
+    total: weekData.items.length,
+    done: weekData.items.filter(i => i.done).length,
+    items: weekData.items.map(i => ({
+      text: i.text,
+      done: i.done,
+      day: dayLabelFromIndex(i.dayIndex),
+      notes: i.notes || ""
+    }))
+  };
+  
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  navigator.clipboard.writeText(jsonStr).then(() => {
+    alert(`✅ 복사 완료!\n\n아래 JSON을 viewer.html에 붙여넣으세요:\n\n${jsonStr}`);
+  });
+});
+  </script>
+</body>
+</html>
